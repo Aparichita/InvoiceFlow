@@ -24,31 +24,56 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// unsecured routes
-router.route("/register").post(userRegisterValidator(), validate, registerUser);
-router.route("/login").post(userLoginValidator(), validate, login);
-router.route("/verify-email/:verificationToken").get(verifyEmail);
-router.route("/refresh-token").post(refreshAccessToken);
-router
-  .route("/forgot-password")
-  .post(userForgotPasswordValidator(), validate, forgotPasswordRequest);
-router
-  .route("/reset-password/:resetToken")
-  .post(userResetForgotPasswordValidator(), validate, resetForgotPassword);
+/* ========= UNSECURED ROUTES ========= */
 
-// secured routes
-router.route("/logout").post(verifyJWT, logoutUser);
-router.route("/current-user").get(verifyJWT, getCurrentUser);
-router
-  .route("/change-password")
-  .post(
-    verifyJWT,
-    userChangeCurrentPasswordValidator(),
-    validate,
-    changeCurrentPassword
-  );
-router
-  .route("/resend-email-verification")
-  .post(verifyJWT, resendEmailVerification);
+// Register new user
+router.post("/register", userRegisterValidator(), validate, registerUser);
+
+// Login user
+router.post("/login", userLoginValidator(), validate, login);
+
+// Verify email with token
+router.get("/verify-email/:verificationToken", verifyEmail);
+
+// Refresh access token (using refresh token)
+router.post("/refresh-token", refreshAccessToken);
+
+// Forgot password (request reset link)
+router.post(
+  "/forgot-password",
+  userForgotPasswordValidator(),
+  validate,
+  forgotPasswordRequest
+);
+
+// Reset password using reset token
+router.post(
+  "/reset-password/:resetToken",
+  userResetForgotPasswordValidator(),
+  validate,
+  resetForgotPassword
+);
+
+/* ========= SECURED ROUTES (require JWT) ========= */
+
+// Logout
+router.post("/logout", verifyJWT, logoutUser);
+
+// Get current logged-in user
+router.get("/me", verifyJWT, getCurrentUser);
+// (alias: /current-user, can be removed if not needed)
+router.get("/current-user", verifyJWT, getCurrentUser);
+
+// Change current password
+router.post(
+  "/change-password",
+  verifyJWT,
+  userChangeCurrentPasswordValidator(),
+  validate,
+  changeCurrentPassword
+);
+
+// Resend email verification link
+router.post("/resend-email-verification", verifyJWT, resendEmailVerification);
 
 export default router;

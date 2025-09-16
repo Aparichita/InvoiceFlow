@@ -5,7 +5,6 @@ import asyncHandler from "../utils/async-handler.js";
 import generatePDF from "../utils/generate-pdf.js";
 import { Invoice } from "../models/invoice.model.js";
 
-
 /**
  * createInvoice
  * Body: { customerName, customerPhone, customerEmail?, items: [{name, quantity, price}], tax?, language? }
@@ -58,7 +57,7 @@ const createInvoice = asyncHandler(async (req, res) => {
 
   const invoice = await Invoice.create(invoiceDoc);
 
-  // generate PDF (function should return a public URL or server path)
+  // generate PDF
   try {
     const pdfUrl = await generatePDF(invoice);
     invoice.pdfUrl = pdfUrl;
@@ -72,6 +71,7 @@ const createInvoice = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, invoice, "Invoice created successfully"));
 });
 
+// get all invoices
 const getInvoices = asyncHandler(async (req, res) => {
   const filter = req.user?._id ? { createdBy: req.user._id } : {};
   const invoices = await Invoice.find(filter).sort({ createdAt: -1 });
@@ -80,6 +80,7 @@ const getInvoices = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, invoices, "Invoices fetched successfully"));
 });
 
+// get single invoice
 const getInvoiceById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const invoice = await Invoice.findById(id);
@@ -108,7 +109,6 @@ const generateInvoicePDF = asyncHandler(async (req, res) => {
 
   if (!invoice) throw new ApiError(404, "Invoice not found");
 
-  // ownership check
   if (
     invoice.createdBy &&
     req.user &&
