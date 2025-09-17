@@ -1,15 +1,16 @@
-// routes/payment.routes.js
+// src/routes/payment.routes.js
 import express from "express";
 import {
-  createOrder,
-  verifyPayment,
-  razorpayWebhook,
+  createCheckoutSession,
+  stripeWebhook,
 } from "../controllers/payment.controller.js";
 
 const router = express.Router();
 
-router.post("/create-order", createOrder);
-router.post("/verify-payment", verifyPayment);
-router.post("/webhook/razorpay", razorpayWebhook);
+// Create Stripe Checkout Session
+router.post("/create-checkout-session", createCheckoutSession);
+
+// Stripe Webhook
+router.post("/webhook/stripe", stripeWebhook);
 
 export default router;

@@ -7,14 +7,33 @@ import invoiceRoutes from "./routes/invoice.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import whatsappRoutes from "./routes/whatsapp.routes.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
+import { stripeWebhooks } from "./controllers/webhooks.js";
+
+// Stripe webhook endpoint (raw body required)
+app.post(
+  "/api/stripe",
+  express.raw({ type: "application/json" }),
+  stripeWebhooks
+);
+
 
 const app = express();
 
-// ==== Razorpay webhook raw parser (must come BEFORE express.json()) ====
-app.use("/api/payments/webhook/razorpay", express.raw({ type: "*/*" }));
+// ==== Stripe webhook raw parser (must come BEFORE express.json()) ====
+app.post(
+  "/api/payments/webhook/stripe",
+  express.raw({ type: "application/json" }), // raw body required
+  (req, res, next) => {
+    req.isStripeWebhook = true;
+    next();
+  }
+);
 
 // ==== JSON parser for all other routes ====
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.isStripeWebhook) return next(); // skip JSON for webhook
+  express.json()(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
 
 // ==== Static serving for PDFs ====
