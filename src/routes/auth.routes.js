@@ -1,4 +1,3 @@
-// src/routes/auth.routes.js
 import { Router } from "express";
 import {
   registerUser,
@@ -61,8 +60,7 @@ router.post("/logout", verifyJWT, logoutUser);
 
 // Get current logged-in user
 router.get("/me", verifyJWT, getCurrentUser);
-// (alias: /current-user, can be removed if not needed)
-router.get("/current-user", verifyJWT, getCurrentUser);
+router.get("/current-user", verifyJWT, getCurrentUser); // alias
 
 // Change current password
 router.post(

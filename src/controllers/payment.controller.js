@@ -1,99 +1,89 @@
-import asyncHandler from "../utils/async-handler.js";
+// src/controllers/payment.controller.js
+import dotenv from "dotenv";
+dotenv.config(); // ✅ Load env first
+
 import Stripe from "stripe";
-// Uncomment when you have these models
-// import Transaction from "../models/transaction.model.js";
-// import User from "../models/user.model.js";
+import Invoice from "../models/invoice.model.js";
 
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
-
-if (!STRIPE_SECRET_KEY) {
-  console.warn(
-    "⚠️ STRIPE_SECRET_KEY not set. Stripe functions will use stubs."
-  );
-}
-
-const stripe = STRIPE_SECRET_KEY
-  ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2025-08-27" })
-  : null;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2025-08-27",
+});
 
 /**
- * === Create Stripe Checkout Session ===
+ * Create Stripe Checkout Session
  */
-export const createCheckoutSession = asyncHandler(async (req, res) => {
-  if (!stripe) {
-    return res.status(200).json({
-      success: true,
-      message: "Stripe key not set. Stub checkout session for testing.",
-      url: "https://example.com/stub-checkout",
-    });
-  }
-
-  const { amount, currency, transactionId, appId } = req.body;
-
+export const createCheckoutSession = async (req, res) => {
   try {
+    const { invoiceId } = req.body;
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) return res.status(404).json({ message: "Invoice not found" });
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      mode: "payment",
       line_items: [
         {
           price_data: {
-            currency: currency || "usd",
-            product_data: { name: "Credits Purchase" },
-            unit_amount: amount,
+            currency: "usd",
+            product_data: { name: `Invoice #${invoice._id}` },
+            unit_amount: invoice.amount * 100, // amount in cents
           },
           quantity: 1,
         },
       ],
-      metadata: {
-        transactionId: transactionId || "unknown",
-        appId: appId || "unknown",
-      },
-      success_url: `${process.env.CLIENT_URL}/payments/success`,
-      cancel_url: `${process.env.CLIENT_URL}/payments/cancel`,
+      mode: "payment",
+      success_url: `${process.env.CLIENT_URL}/success`,
+      cancel_url: `${process.env.CLIENT_URL}/cancel`,
+      metadata: { invoiceId: invoice._id.toString() },
     });
 
-    return res.status(200).json({ success: true, url: session.url });
-  } catch (error) {
-    console.error("Stripe Checkout Session error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error("Error creating checkout session:", err.message);
+    res
+      .status(500)
+      .json({ message: "Failed to create Stripe session", error: err.message });
   }
-});
+};
 
 /**
- * === Stripe Webhook Handler ===
+ * Stripe Webhook
  */
-export const stripeWebhook = asyncHandler(async (req, res) => {
-  if (!stripe) {
-    console.log("Stub webhook received:", req.body);
-    return res.status(200).send("OK (stub webhook)");
-  }
-
-  const sig = req.headers["stripe-signature"];
+export const stripeWebhook = async (req, res) => {
   let event;
 
-  try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.error("❌ Webhook signature verification failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+  // Skip signature verification for local testing
+  if (process.env.NODE_ENV === "development") {
+    event = req.body;
+    console.log("⚠️ Local webhook testing - signature verification skipped");
+  } else {
+    const sig = req.headers["stripe-signature"];
+    if (!sig)
+      return res.status(400).send("Webhook Error: Missing stripe-signature");
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err) {
+      console.error("Webhook signature verification failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
   }
 
-  console.log("✅ Verified webhook event:", event.type);
-
-  // Example handling: add DB logic when models are ready
+  // Handle the event
   switch (event.type) {
-    case "payment_intent.succeeded":
-      console.log("💰 PaymentIntent succeeded:", event.data.object.id);
-      // TODO: Update Transaction + User credits in DB
+    case "checkout.session.completed":
+      const session = event.data.object;
+      const invoiceId = session.metadata.invoiceId;
+      await Invoice.findByIdAndUpdate(invoiceId, { paid: true });
+      console.log(`✅ Invoice ${invoiceId} marked as paid`);
       break;
 
-    case "charge.succeeded":
-      console.log("✅ Charge succeeded:", event.data.object.id);
+    case "payment_intent.succeeded":
+      const paymentIntent = event.data.object;
+      console.log(`✅ PaymentIntent succeeded: ${paymentIntent.id}`);
       break;
 
     default:
@@ -101,4 +91,4 @@ export const stripeWebhook = asyncHandler(async (req, res) => {
   }
 
   res.json({ received: true });
-});
+};

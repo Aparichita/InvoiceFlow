@@ -1,17 +1,22 @@
+// src/index.js
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config(); // ✅ Load .env at the very beginning
 
 import express from "express";
 import mongoose from "mongoose";
+
 import notificationRoutes from "./routes/notification.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import invoiceRoutes from "./routes/invoice.routes.js";
+import paymentRoutes from "./routes/payment.routes.js"; // ✅ Import payment routes
 
 const app = express();
 const PORT = process.env.PORT || 3500;
 
-// Middleware to parse JSON
+// Parse JSON
 app.use(express.json());
 
-// Debug middleware - log all incoming requests
+// Debug: log all requests
 app.use((req, res, next) => {
   console.log("📨 Incoming Request:", {
     method: req.method,
@@ -21,9 +26,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Register notification routes
+// Mount routes
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/payments", paymentRoutes); // ✅ Payment routes
+
 console.log("✅ Notification routes mounted at /api/notifications");
+console.log("✅ Auth routes mounted at /api/auth");
+console.log("✅ Invoice routes mounted at /api/invoices");
+console.log("✅ Payment routes mounted at /api/payments");
 
 // Health check
 app.get("/", (req, res) => {
@@ -31,27 +43,19 @@ app.get("/", (req, res) => {
   res.send("InvoiceFlow API running...");
 });
 
-// Connect to MongoDB with better error handling
+// Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB connected");
 
-    // Start server with error handling
     const server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`🎯 Server running on http://localhost:${PORT}`);
-      console.log("🌐 Available endpoints:");
-      console.log("   GET  /");
-      console.log("   POST /api/notifications/send");
-      console.log("   POST /api/notifications/send-invoice-email");
     });
 
-    // Handle server errors
     server.on("error", (error) => {
       if (error.code === "EADDRINUSE") {
         console.error(`❌ Port ${PORT} is already in use!`);
-        console.log("💡 Try: netstat -ano | findstr :3500");
-        console.log("💡 Then: taskkill /pid <PID> /f");
       } else {
         console.error("❌ Server error:", error.message);
       }
@@ -59,15 +63,12 @@ mongoose
   })
   .catch((err) => {
     console.error("❌ MongoDB Connection failed:", err.message);
-    console.log("⚠️  Starting server without database connection...");
-
-    // Start server even if DB fails
-    const server = app.listen(PORT, "0.0.0.0", () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`🎯 Server running on http://localhost:${PORT} (without DB)`);
     });
   });
 
-// Handle uncaught exceptions
+// Handle uncaught exceptions & unhandled rejections
 process.on("uncaughtException", (error) => {
   console.error("💥 Uncaught Exception:", error.message);
   process.exit(1);

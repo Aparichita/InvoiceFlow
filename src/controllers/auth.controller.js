@@ -57,7 +57,9 @@ const registerUser = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
 
   if (sendEmail) {
-    const verificationUrl = `${req.protocol}://${req.get("host")}/api/auth/verify-email/${unHashedToken}`;
+    const verificationUrl = `${req.protocol}://${req.get(
+      "host"
+    )}/api/auth/verify-email/${unHashedToken}`;
     await sendEmail({
       to: user.email,
       subject: "Please verify your email",
@@ -196,7 +198,9 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
 
   if (sendEmail) {
-    const verificationUrl = `${req.protocol}://${req.get("host")}/api/auth/verify-email/${unHashedToken}`;
+    const verificationUrl = `${req.protocol}://${req.get(
+      "host"
+    )}/api/auth/verify-email/${unHashedToken}`;
     await sendEmail({
       to: user.email,
       subject: "Please verify your email",
@@ -222,10 +226,13 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
 
   const { unHashedToken, hashedToken, tokenExpiry } =
     user.generateTemporaryToken();
-    console.log("Forgot password token (use in Postman):", unHashedToken);
+
   user.forgotPasswordToken = hashedToken;
   user.forgotPasswordExpiry = tokenExpiry;
   await user.save({ validateBeforeSave: false });
+
+  // log token for testing
+  console.log("Forgot password token (use in Postman):", unHashedToken);
 
   if (sendEmail) {
     const forgotPasswordUrl = `${process.env.FORGOT_PASSWORD_REDIRECT_URL}/${unHashedToken}`;
@@ -239,15 +246,11 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
     });
   }
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        {},
-        "Password reset mail has been sent to your email ID"
-      )
-    );
+  // Return token in response for Postman testing (remove in production!)
+  return res.status(200).json({
+    message: "Password reset mail has been sent to your email ID",
+    resetToken: unHashedToken, // ✅ for testing
+  });
 });
 
 /**
@@ -296,35 +299,50 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
+
 /**
  * Refresh access token
  */
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+  const incomingRefreshToken =
+    req.cookies?.refreshToken || req.body?.refreshToken;
   if (!incomingRefreshToken) throw new ApiError(401, "Unauthorized access");
 
   try {
-    const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
     const user = await User.findById(decodedToken._id).select("+refreshToken");
     if (!user || incomingRefreshToken !== user.refreshToken)
       throw new ApiError(401, "Invalid or expired refresh token");
 
-    const { accessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshTokens(user._id);
+    const { accessToken, refreshToken: newRefreshToken } =
+      await generateAccessAndRefreshTokens(user._id);
 
     user.refreshToken = newRefreshToken;
     await user.save({ validateBeforeSave: false });
 
-    const options = { httpOnly: true, secure: process.env.NODE_ENV === "production" };
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    };
 
-    return res.status(200)
+    return res
+      .status(200)
       .cookie("accessToken", accessToken, options)
       .cookie("refreshToken", newRefreshToken, options)
-      .json(new ApiResponse(200, { accessToken, refreshToken: newRefreshToken }, "Access token refreshed"));
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access token refreshed"
+        )
+      );
   } catch (error) {
     throw new ApiError(401, "Invalid refresh token");
   }
 });
-
 
 export {
   registerUser,
