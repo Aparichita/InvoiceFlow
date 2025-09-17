@@ -114,4 +114,5 @@ invoiceSchema.pre("validate", function (next) {
   next();
 });
 
-export const Invoice = mongoose.model("Invoice", invoiceSchema);
+export default mongoose.model("Invoice", invoiceSchema);
+

@@ -9,6 +9,7 @@ import whatsappRoutes from "./routes/whatsapp.routes.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import { stripeWebhooks } from "./controllers/webhooks.js";
 
+const app = express();
 // Stripe webhook endpoint (raw body required)
 app.post(
   "/api/stripe",
@@ -17,7 +18,7 @@ app.post(
 );
 
 
-const app = express();
+
 
 // ==== Stripe webhook raw parser (must come BEFORE express.json()) ====
 app.post(

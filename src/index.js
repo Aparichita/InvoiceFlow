@@ -1,31 +1,32 @@
-// src/index.js
-import mongoose from "mongoose";
 import dotenv from "dotenv";
-import app from "./app.js";
+dotenv.config();
 
-dotenv.config(); // load .env variables
+import express from "express";
+import mongoose from "mongoose";
+import notificationRoutes from "./routes/notification.routes.js";
 
-const PORT = process.env.PORT || 5000;
+const app = express();
+const PORT = process.env.PORT || 3500;
 
-const MONGO_URI = process.env.MONGO_URI;
+// Middleware to parse JSON
+app.use(express.json());
 
-if (!MONGO_URI) {
-  console.error("❌ MONGO_URI not set in environment variables");
-  process.exit(1);
-}
+// Register notification routes
+app.use("/api/notifications", notificationRoutes);
 
+// Health check
+app.get("/", (req, res) => res.send("InvoiceFlow API running..."));
+
+// Connect to MongoDB
 mongoose
-  .connect(MONGO_URI, {
+  .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(() => {
     console.log("✅ MongoDB connected");
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on http://localhost:${PORT}`)
+    );
   })
-  .catch((err) => {
-    console.error("❌ DB Connection failed", err);
-    process.exit(1);
-  });
+  .catch((err) => console.error("❌ DB Connection failed", err));

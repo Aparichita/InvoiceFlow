@@ -1,8 +1,8 @@
 // src/controllers/auth.controller.js
 import { User } from "../models/user.model.js";
-import { ApiResponse } from "../utils/api-response.js";
-import { ApiError } from "../utils/api-error.js";
-import { asyncHandler } from "../utils/async-handler.js";
+import ApiResponse from "../utils/api-response.js";
+import ApiError from "../utils/api-error.js";
+import asyncHandler from "../utils/async-handler.js";
 import {
   sendEmail,
   emailVerificationMailgenConst,
@@ -10,12 +10,9 @@ import {
 } from "../utils/mail.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { User } from "../models/user.model.js";
-
 
 /**
- * generateAccessAndRefreshTokens
- * Reuses instance methods on User model (assumes user.generateAccessToken() and generateRefreshToken() exist)
+ * Generate access + refresh tokens for a user
  */
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -36,9 +33,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
 };
 
 /**
- * registerUser
- * Body: { email, username, password }
- * Sends verification mail (if mail util available)
+ * Register new user
  */
 const registerUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
@@ -55,21 +50,20 @@ const registerUser = asyncHandler(async (req, res) => {
     isEmailVerified: false,
   });
 
-  // generate temporary token for email verification
   const { unHashedToken, hashedToken, tokenExpiry } =
     user.generateTemporaryToken();
   user.emailVerificationToken = hashedToken;
   user.emailVerificationExpiry = tokenExpiry;
   await user.save({ validateBeforeSave: false });
 
-  // send verification email (if mail util set-up)
   if (sendEmail) {
+    const verificationUrl = `${req.protocol}://${req.get("host")}/api/auth/verify-email/${unHashedToken}`;
     await sendEmail({
-      email: user?.email,
+      to: user.email,
       subject: "Please verify your email",
       mailGenContent: emailVerificationMailgenConst(
         user.username,
-        `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`
+        verificationUrl
       ),
     });
   }
@@ -86,9 +80,7 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 /**
- * login
- * Body: { email, password }
- * Issues access + refresh tokens and sets cookies
+ * Login
  */
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -109,7 +101,6 @@ const login = asyncHandler(async (req, res) => {
     "-password -refreshToken -emailVerificationToken -emailVerificationExpiry"
   );
 
-  // cookie options: in dev you may want secure:false
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -129,8 +120,7 @@ const login = asyncHandler(async (req, res) => {
 });
 
 /**
- * logoutUser
- * Requires verifyJWT middleware to have attached req.user
+ * Logout
  */
 const logoutUser = asyncHandler(async (req, res) => {
   if (req.user && req.user._id) {
@@ -153,8 +143,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 /**
- * getCurrentUser
- * Returns req.user (populated by verifyJWT middleware)
+ * Get current user
  */
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
@@ -163,8 +152,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 });
 
 /**
- * verifyEmail
- * Route: GET /api/v1/auth/verify-email/:verificationToken
+ * Verify email
  */
 const verifyEmail = asyncHandler(async (req, res) => {
   const { verificationToken } = req.params;
@@ -175,7 +163,6 @@ const verifyEmail = asyncHandler(async (req, res) => {
     .createHash("sha256")
     .update(verificationToken)
     .digest("hex");
-
   const user = await User.findOne({
     emailVerificationToken: hashedToken,
     emailVerificationExpiry: { $gt: Date.now() },
@@ -194,16 +181,14 @@ const verifyEmail = asyncHandler(async (req, res) => {
 });
 
 /**
- * resendEmailVerification
- * Protected route
+ * Resend verification email
  */
 const resendEmailVerification = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user?._id);
+  const user = await User.findById(req.user._id);
   if (!user) throw new ApiError(404, "User does not exist");
   if (user.isEmailVerified)
     throw new ApiError(409, "Email is already verified");
 
-  // regenerate token and send email (optional)
   const { unHashedToken, hashedToken, tokenExpiry } =
     user.generateTemporaryToken();
   user.emailVerificationToken = hashedToken;
@@ -211,12 +196,13 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
 
   if (sendEmail) {
+    const verificationUrl = `${req.protocol}://${req.get("host")}/api/auth/verify-email/${unHashedToken}`;
     await sendEmail({
-      email: user.email,
+      to: user.email,
       subject: "Please verify your email",
       mailGenContent: emailVerificationMailgenConst(
         user.username,
-        `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`
+        verificationUrl
       ),
     });
   }
@@ -227,52 +213,7 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
 });
 
 /**
- * refreshAccessToken
- * Use refresh token from cookie or body to issue new tokens
- */
-const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken =
-    req.cookies?.refreshToken || req.body?.refreshToken;
-  if (!incomingRefreshToken) throw new ApiError(401, "Unauthorized access");
-
-  try {
-    const decodedToken = jwt.verify(
-      incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
-    const user = await User.findById(decodedToken?._id).select("+refreshToken");
-    if (!user || incomingRefreshToken !== user.refreshToken)
-      throw new ApiError(401, "Invalid or expired refresh token");
-
-    const options = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    };
-    const { accessToken, refreshToken: newRefreshToken } =
-      await generateAccessAndRefreshTokens(user._id);
-
-    user.refreshToken = newRefreshToken;
-    await user.save({ validateBeforeSave: false });
-
-    return res
-      .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newRefreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken: newRefreshToken },
-          "Access token refreshed"
-        )
-      );
-  } catch (error) {
-    throw new ApiError(401, "Invalid refresh token");
-  }
-});
-
-/**
- * forgotPasswordRequest
- * Body: { email }
+ * Forgot password request
  */
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -281,17 +222,19 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
 
   const { unHashedToken, hashedToken, tokenExpiry } =
     user.generateTemporaryToken();
+    console.log("Forgot password token (use in Postman):", unHashedToken);
   user.forgotPasswordToken = hashedToken;
   user.forgotPasswordExpiry = tokenExpiry;
   await user.save({ validateBeforeSave: false });
 
   if (sendEmail) {
+    const forgotPasswordUrl = `${process.env.FORGOT_PASSWORD_REDIRECT_URL}/${unHashedToken}`;
     await sendEmail({
-      email: user.email,
+      to: user.email,
       subject: "Password reset request",
       mailGenContent: forgotPasswordMailgenConst(
         user.username,
-        `${process.env.FORGOT_PASSWORD_REDIRECT_URL}/${unHashedToken}`
+        forgotPasswordUrl
       ),
     });
   }
@@ -308,9 +251,7 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
 });
 
 /**
- * resetForgotPassword
- * Route: POST /api/v1/auth/reset-password/:resetToken
- * Body: { newPassword }
+ * Reset forgot password
  */
 const resetForgotPassword = asyncHandler(async (req, res) => {
   const { resetToken } = req.params;
@@ -338,12 +279,11 @@ const resetForgotPassword = asyncHandler(async (req, res) => {
 });
 
 /**
- * changeCurrentPassword
- * Protected route. Body: { oldPassword, newPassword }
+ * Change current password
  */
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
-  const user = await User.findById(req.user?._id).select("+password");
+  const user = await User.findById(req.user._id).select("+password");
   if (!user) throw new ApiError(404, "User not found");
 
   const isPasswordValid = await user.isPasswordCorrect(oldPassword);
@@ -356,6 +296,35 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
+/**
+ * Refresh access token
+ */
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+  if (!incomingRefreshToken) throw new ApiError(401, "Unauthorized access");
+
+  try {
+    const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const user = await User.findById(decodedToken._id).select("+refreshToken");
+    if (!user || incomingRefreshToken !== user.refreshToken)
+      throw new ApiError(401, "Invalid or expired refresh token");
+
+    const { accessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+    user.refreshToken = newRefreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    const options = { httpOnly: true, secure: process.env.NODE_ENV === "production" };
+
+    return res.status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(new ApiResponse(200, { accessToken, refreshToken: newRefreshToken }, "Access token refreshed"));
+  } catch (error) {
+    throw new ApiError(401, "Invalid refresh token");
+  }
+});
+
 
 export {
   registerUser,

@@ -1,9 +1,15 @@
-// src/controllers/webhooks.js
 import Stripe from "stripe";
-import User from "../models/user.model.js"; // adjust if file name differs
-import Transaction from "../models/invoice.model.js"; // adjust if file name differs
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.warn("⚠️ STRIPE_SECRET_KEY not set. Stripe will fail.");
+}
+
+const stripe = new Stripe(
+  process.env.STRIPE_SECRET_KEY || "sk_test_placeholder",
+  {
+    apiVersion: "2024-06-20",
+  }
+);
 
 export const stripeWebhooks = async (req, res) => {
   const sig = req.headers["stripe-signature"];
@@ -15,11 +21,9 @@ export const stripeWebhooks = async (req, res) => {
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
-  } catch (error) {
-    console.error("⚠️ Stripe webhook signature error:", error.message);
-    return res.status(400).send(`Webhook Error: ${error.message}`);
+  } catch (err) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
-
   try {
     switch (event.type) {
       case "payment_intent.succeeded": {

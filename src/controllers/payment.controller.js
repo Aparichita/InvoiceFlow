@@ -1,6 +1,8 @@
-// src/controllers/payment.controller.js
 import asyncHandler from "../utils/async-handler.js";
 import Stripe from "stripe";
+// Uncomment when you have these models
+// import Transaction from "../models/transaction.model.js";
+// import User from "../models/user.model.js";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -11,7 +13,9 @@ if (!STRIPE_SECRET_KEY) {
   );
 }
 
-const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
+const stripe = STRIPE_SECRET_KEY
+  ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2025-08-27" })
+  : null;
 
 /**
  * === Create Stripe Checkout Session ===
@@ -36,7 +40,7 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
           price_data: {
             currency: currency || "usd",
             product_data: { name: "Credits Purchase" },
-            unit_amount: amount, // amount in cents (Stripe uses smallest unit)
+            unit_amount: amount,
           },
           quantity: 1,
         },
@@ -75,37 +79,26 @@ export const stripeWebhook = asyncHandler(async (req, res) => {
       STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("⚠️ Webhook signature verification failed:", err.message);
+    console.error("❌ Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  try {
-    switch (event.type) {
-      case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object;
+  console.log("✅ Verified webhook event:", event.type);
 
-        // Fetch checkout session with metadata
-        const sessionList = await stripe.checkout.sessions.list({
-          payment_intent: paymentIntent.id,
-        });
+  // Example handling: add DB logic when models are ready
+  switch (event.type) {
+    case "payment_intent.succeeded":
+      console.log("💰 PaymentIntent succeeded:", event.data.object.id);
+      // TODO: Update Transaction + User credits in DB
+      break;
 
-        const session = sessionList.data[0];
-        const { transactionId, appId } = session.metadata;
+    case "charge.succeeded":
+      console.log("✅ Charge succeeded:", event.data.object.id);
+      break;
 
-        console.log("✅ Payment succeeded:", transactionId, appId);
-
-        // TODO: Update Transaction + User credits in DB here
-
-        break;
-      }
-
-      default:
-        console.log(`Unhandled event type ${event.type}`);
-    }
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error("Webhook processing error:", error);
-    res.status(500).send("Internal server error");
+    default:
+      console.log(`ℹ️ Unhandled event type: ${event.type}`);
   }
+
+  res.json({ received: true });
 });

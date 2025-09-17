@@ -1,6 +1,6 @@
 // src/middlewares/validator.middleware.js
 import { validationResult } from "express-validator";
-import { ApiError } from "../utils/api-error.js";
+import ApiError from "../utils/api-error.js";
 
 /**
  * validate middleware

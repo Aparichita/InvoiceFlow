@@ -237,6 +237,43 @@ export function paymentReminderMailGenContent({
     },
   };
 }
+export function emailVerificationMailgenConst(username, verificationUrl) {
+  return {
+    body: {
+      name: username,
+      intro: "Please verify your email to continue using InvoiceFlow.",
+      action: {
+        instructions: "Click the button below to verify your email:",
+        button: {
+          color: "#22BC66",
+          text: "Verify Email",
+          link: verificationUrl,
+        },
+      },
+      outro: "If you did not sign up, please ignore this email.",
+    },
+  };
+}
+
+export function forgotPasswordMailgenConst(username, resetUrl) {
+  return {
+    body: {
+      name: username,
+      intro: "You requested to reset your password.",
+      action: {
+        instructions: "Click the button below to reset your password:",
+        button: {
+          color: "#FF6B6B",
+          text: "Reset Password",
+          link: resetUrl,
+        },
+      },
+      outro:
+        "If you did not request a password reset, please ignore this email.",
+    },
+  };
+}
+
 
 /* -------------------------
    Convenience wrappers
