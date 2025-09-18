@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config(); // ✅ Load env first
 
 import Stripe from "stripe";
-import Invoice from "../models/invoice.model.js";
+import Invoice from "../../src/models/invoice.model.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-08-27",

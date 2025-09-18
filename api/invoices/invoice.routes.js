@@ -1,7 +1,7 @@
 // src/routes/invoice.routes.js
 import express from "express";
 import path from "path";
-import  Invoice  from "../models/invoice.model.js"; // <-- ADD THIS
+import Invoice from "../models/invoice.model.js"; // <-- ADD THIS
 
 import {
   createInvoice,
@@ -42,6 +42,5 @@ router.get("/:id/download", async (req, res) => {
       .json({ message: "Error downloading file", error: err.message });
   }
 });
-
 
 export default router;
