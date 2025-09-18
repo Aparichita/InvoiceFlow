@@ -1,54 +1,14 @@
-// api/index.js
-import serverless from "serverless-http";
-import express from "express";
+import dotenv from "dotenv";
+dotenv.config();
+
 import mongoose from "mongoose";
+import serverless from "serverless-http";
+import app from "../src/index.js";
 
-const app = express();
-
-// --------------------------
-// Middleware
-// --------------------------
-app.use(express.json());
-
-// --------------------------
-// Example route
-// --------------------------
-app.get("/", (req, res) => {
-  res.send("✅ InvoiceFlow API is running!");
-});
-
-// --------------------------
 // Connect to MongoDB
-// --------------------------
-// Use a cached connection to avoid multiple connections per cold start
-let cached = global.mongoose;
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
-
-async function connectToDatabase() {
-  if (cached.conn) {
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
-    cached.promise = mongoose
-      .connect(process.env.MONGO_URI, opts)
-      .then((mongoose) => mongoose);
-  }
-  cached.conn = await cached.promise;
-  return cached.conn;
-}
-
-// Connect once at startup
-connectToDatabase()
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB Connection failed:", err.message));
+  .catch((err) => console.error("❌ MongoDB connection failed:", err.message));
 
-// --------------------------
-// Export for Vercel
-// --------------------------
 export default serverless(app);

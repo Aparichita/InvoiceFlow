@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InvoiceFlow Vercel Deployment Diagnostic</title>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3a0ca3;
+            --success: #4cc9f0;
+            --warning: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            padding: 1.5rem;
+            margin: 1.5rem;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .status-success {
+            background-color: #e6f7ff;
+            color: var(--success);
+        }
+        
+        .status-warning {
+            background-color: #fff5e6;
+            color: var(--warning);
+        }
+        
+        .checklist {
+            list-style-type: none;
+        }
+        
+        .checklist li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .checklist li:last-child {
+            border-bottom: none;
+        }
+        
+        .check-icon {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            margin-right: 0.75rem;
+            text-align: center;
+            line-height: 24px;
+            border-radius: 50%;
+            font-weight: bold;
+        }
+        
+        .check-valid {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .check-invalid {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+        
+        .btn:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .solution-section {
+            background-color: #e9f5ff;
+            padding: 1.5rem;
+            border-radius: 5px;
+            margin-top: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .tab-container {
+            margin-top: 1rem;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            border-bottom: 3px solid var(--primary);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .file-structure {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            line-height: 1.8;
+            font-size: 0.9rem;
+        }
+        
+        .actions {
+            text-align: center;
+            padding: 2rem;
+            background: #f9f9f9;
+            border-top: 1px solid #eee;
+        }
+        
+        @media (max-width: 768px) {
+            header {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                margin: 1rem;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>InvoiceFlow Vercel Deployment Diagnostic</h1>
+            <p class="subtitle">Identify and fix issues causing blank pages on deployment</p>
+        </header>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Deployment Configuration Check</h2>
+                <span class="status-badge status-warning">Needs Attention</span>
+            </div>
+            
+            <ul class="checklist">
+                <li>
+                    <span class="check-icon check-valid">✓</span>
+                    <div>
+                        <strong>Project Structure</strong>
+                        <p>Your project folder organization looks appropriate</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="check-icon check-invalid">!</span>
+                    <div>
+                        <strong>Entry Point Configuration</strong>
+                        <p>Check if your package.json has the correct main entry point</p>
+                        <div class="solution-section">
+                            <h4>Solution:</h4>
+                            <p>Ensure your package.json has:</p>
+                            <div class="code-block">
+{
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  }
+}
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <span class="check-icon check-invalid">!</span>
+                    <div>
+                        <strong>Vercel Configuration</strong>
+                        <p>Check your vercel.json for proper routing settings</p>
+                        <div class="solution-section">
+                            <h4>Solution:</h4>
+                            <p>Your vercel.json should include:</p>
+                            <div class="code-block">
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.js"
+    }
+  ]
+}
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <span class="check-icon check-invalid">!</span>
+                    <div>
+                        <strong>Environment Variables</strong>
+                        <p>Ensure all environment variables are set in Vercel dashboard</p>
+                        <div class="solution-section">
+                            <h4>Solution:</h4>
+                            <p>In your Vercel project dashboard, go to Settings → Environment Variables and add:</p>
+                            <ul>
+                                <li>DATABASE_URL</li>
+                                <li>STRIPE_SECRET_KEY</li>
+                                <li>JWT_SECRET</li>
+                                <li>WHATSAPP_API_KEY</li>
+                                <li>Any other API keys your app needs</li>
+                            </ul>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Server Configuration</h2>
+                <span class="status-badge status-warning">Needs Attention</span>
+            </div>
+            
+            <div class="tab-container">
+                <div class="tabs">
+                    <div class="tab active" onclick="openTab(event, 'tab-1')">Port Binding</div>
+                    <div class="tab" onclick="openTab(event, 'tab-2')">Static Files</div>
+                    <div class="tab" onclick="openTab(event, 'tab-3')">Middleware</div>
+                </div>
+                
+                <div id="tab-1" class="tab-content active">
+                    <p>Vercel requires your app to listen on the port provided by the environment variable PORT.</p>
+                    <div class="code-block">
+// In your index.js or app.js
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ... your routes and middleware ...
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+                    </div>
+                </div>
+                
+                <div id="tab-2" class="tab-content">
+                    <p>Ensure your static files are properly served from the public directory:</p>
+                    <div class="code-block">
+// Serve static files
+app.use(express.static('public'));
+
+// For client-side routing (like React Router)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+                    </div>
+                </div>
+                
+                <div id="tab-3" class="tab-content">
+                    <p>Check your middleware order and CORS configuration:</p>
+                    <div class="code-block">
+// Enable CORS
+const cors = require('cors');
+app.use(cors());
+
+// Body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Your routes
+app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/invoices', require('./routes/invoice.routes'));
+// ... other routes ...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Troubleshooting Steps</h2>
+                <span class="status-badge status-success">Action Required</span>
+            </div>
+            
+            <ol>
+                <li>Check Vercel deployment logs for errors</li>
+                <li>Test your app locally with production settings: <code>NODE_ENV=production npm start</code></li>
+                <li>Add error handling middleware to your Express app</li>
+                <li>Verify all file paths are correct (case-sensitive on Vercel)</li>
+                <li>Check that all required modules are in package.json dependencies (not devDependencies)</li>
+            </ol>
+            
+            <div class="solution-section">
+                <h4>Error Handling Middleware Example:</h4>
+                <div class="code-block">
+// Add this at the end of your middleware chain
+app.use((error, req, res, next) => {
+    console.error(error);
+    res.status(500).json({ 
+        message: 'Internal Server Error',
+        error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+});
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Project Structure Reference</h2>
+            </div>
+            
+            <div class="file-structure">
+                INVOICEFLOW/<br>
+                ├── api/<br>
+                │   ├── controllers/<br>
+                │   │   ├── auth.controller.js<br>
+                │   │   ├── invoice.controller.js<br>
+                │   │   └── ...<br>
+                │   ├── middlewares/<br>
+                │   ├── models/<br>
+                │   ├── routes/<br>
+                │   │   ├── auth.routes.js<br>
+                │   │   ├── invoice.routes.js<br>
+                │   │   └── ...<br>
+                │   └── db/<br>
+                ├── public/<br>
+                │   └── index.html<br>
+                ├── utils/<br>
+                ├── package.json<br>
+                ├── index.js<br>
+                └── vercel.json
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn" onclick="window.open('https://vercel.com/dashboard', '_blank')">Check Vercel Deployment Logs</button>
+            <button class="btn" style="background-color: var(--warning);" onclick="alert('Run: vercel --prod')">Redeploy Application</button>
+            <button class="btn" style="background-color: var(--success);" onclick="window.location.reload()">Refresh Diagnostics</button>
+        </div>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            // Hide all tab content
+            const tabcontent = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            
+            // Remove active class from all tabs
+            const tabs = document.getElementsByClassName("tab");
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+            
+            // Show the specific tab content and add active class to the button
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+        
+        // Simple checklist interaction
+        document.querySelectorAll('.check-icon').forEach(icon => {
+            icon.addEventListener('click', function() {
+                this.classList.toggle('check-valid');
+                this.classList.toggle('check-invalid');
+                this.textContent = this.classList.contains('check-valid') ? '✓' : '!';
+            });
+        });
+    </script>
+</body>
+</html>
