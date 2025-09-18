@@ -1,13 +1,17 @@
+// src/index.js
 import express from "express";
 import path from "path";
+import { fileURLToPath } from "url";
+
 import authRoutes from "./routes/auth.routes.js";
 import invoiceRoutes from "./routes/invoice.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 
-const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Parse JSON
+const app = express();
 app.use(express.json());
 
 // Mount API routes
@@ -16,13 +20,15 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 
-// Serve static frontend from /public
+// Serve static files from public folder (at root)
 app.use(express.static(path.join(process.cwd(), "public")));
 
-// SPA fallback for frontend routes
-app.get("*", (req, res) => {
+// SPA fallback for non-API routes
+app.use((req, res, next) => {
   if (!req.path.startsWith("/api")) {
     res.sendFile(path.join(process.cwd(), "public", "index.html"));
+  } else {
+    next();
   }
 });
 
