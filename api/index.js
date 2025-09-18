@@ -1,19 +1,22 @@
-// api/index.js
 import express from "express";
 import serverless from "serverless-http";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 
 import authRoutes from "./auth/auth.routes.js";
 
 dotenv.config();
 const app = express();
+
+// Middleware
 app.use(express.json());
+app.use(cookieParser());
 
-// Debug log for serverless entry
-console.log("🚀 index.js loaded - serverless function initialized");
+// Debug log
+console.log("🚀 Serverless function initialized");
 
-// Routes with debug log
+// Routes
 app.use(
   "/api/auth",
   (req, res, next) => {
@@ -33,7 +36,7 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ DB error:", err));
 
-// Local dev only
+// Local dev
 if (process.env.VERCEL !== "1") {
   const PORT = process.env.PORT || 3500;
   app.listen(PORT, () =>
