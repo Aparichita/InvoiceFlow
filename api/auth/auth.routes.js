@@ -1,12 +1,12 @@
 import { Router } from "express";
 import {
   registerUser,
-  login,
+  loginUser,
   logoutUser,
   verifyEmail,
   refreshAccessToken,
   forgotPasswordRequest,
-  resetForgotPassword,
+  resetPassword,
   getCurrentUser,
   changeCurrentPassword,
   resendEmailVerification,
@@ -29,7 +29,7 @@ const router = Router();
 router.post("/register", userRegisterValidator(), validate, registerUser);
 
 // Login user
-router.post("/login", userLoginValidator(), validate, login);
+router.post("/login", userLoginValidator(), validate, loginUser);
 
 // Verify email with token
 router.get("/verify-email/:verificationToken", verifyEmail);
@@ -47,10 +47,10 @@ router.post(
 
 // Reset password using reset token
 router.post(
-  "/reset-password/:resetToken",
+  "/reset-password/:token",
   userResetForgotPasswordValidator(),
   validate,
-  resetForgotPassword
+  resetPassword
 );
 
 /* ========= SECURED ROUTES (require JWT) ========= */
