@@ -24,12 +24,12 @@ app.use("/api/payments", paymentRoutes);
 app.use(express.static(path.join(process.cwd(), "public")));
 
 // SPA fallback for non-API routes
-app.use((req, res, next) => {
+app.use(express.static(path.join(process.cwd(), "public")));
+app.get("*", (req, res) => {
   if (!req.path.startsWith("/api")) {
     res.sendFile(path.join(process.cwd(), "public", "index.html"));
-  } else {
-    next();
   }
 });
+
 
 export default app;
