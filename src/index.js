@@ -23,14 +23,13 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 
 // Serve static files from 'public'
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "../public"))); // <- correct path
 
 // Fallback for non-API routes (SPA routing)
-app.use((req, res, next) => {
+app.get("*", (req, res) => {
+  // send index.html for any route not starting with /api
   if (!req.path.startsWith("/api")) {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
-  } else {
-    next();
+    res.sendFile(path.join(__dirname, "../public/index.html"));
   }
 });
 
